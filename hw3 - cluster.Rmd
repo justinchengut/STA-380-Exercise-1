@@ -1,0 +1,116 @@
+---
+title: "Clustering"
+output: html_document
+---
+
+# Read in the csv file and set the seed
+Start by reading the CSV file, attaching the wine, and setting the seed.
+```{r}
+library(ggplot2)
+wine = read.csv('https://raw.githubusercontent.com/jgscott/STA380/master/data/wine.csv',header=TRUE)
+head(wine)
+attach(wine)
+set.seed(78705)
+```
+
+# Remove the last two columns and scale the data
+Since the last two columns of the data are not useful to us, we remove them.
+After that, we scale the data so that the kmeans will provide more accurate data.
+```{r}
+wine1 <- wine [,c(1:11)]
+wine_scaled <- scale(wine1, center = TRUE, scale = TRUE)
+
+```
+ 
+# Create Clusters
+Next, we need to create clusters for the wine data.  
+2 Centers are created with an nstart of 50.
+```{r}
+cluster_all <- kmeans(wine_scaled, centers=2, nstart=50)
+names(cluster_all)
+cluster_all$centers
+cluster_all$cluster
+
+```
+
+# Graph how well the clusters match the colors of wine from k-means
+This plot shows how well the clusters maps to the colors of wine.
+In this case, 1 is mapping to white and 2 is mapping to red.
+The areas of different color represent the error.
+```{r}
+qplot(color, fill = factor(cluster_all$cluster), data = wine)
+
+```
+
+From this graph, we can tell that Clustering was able to create two clusters that very accurately match the two different colors.  
+
+# Shows how well the prediction of the clusters performed though k-means.
+A tabular representation of the above plot.
+```{r}
+table(wine$color, cluster_all$cluster)
+```
+
+This table shows us the number of each color in each cluster.  As the previous graph already showed us, this model was very accurate, and only grouped a few colors in the incorrect cluster.
+
+# Create a probability table
+
+```{r}
+
+t1 = xtabs(~wine$color+ cluster_all$cluster)
+t1 =
+p1 = prop.table(t1, margin = 1)
+p1 
+```
+
+This table shows us the percentages of each color in each cluster, further proving that this model was very successful in grouping wine colors into clusters.
+
+
+# PCA
+Create the PCA and create a qplot showing the Components
+
+```{r}
+pc2 = prcomp(wine_scaled)
+loadings = pc2$rotation
+scores = pc2$x
+
+qplot(scores[,1], scores[,2], color=wine$color, xlab='Component 1', ylab='Component 2')
+
+pr.var = pc2$sdev^2
+pve = pr.var/sum(pr.var)
+
+```
+
+This shows that the PCs accurately capture the color of the wine, as similar colors can be seen grouped together.
+
+# Create a Histogram that shows the variance of the data of each PC.
+```{r}
+plot(pc2)
+
+```
+
+While PCA was able to separate the colors relatively well, this graph still shows some variances within the groups.
+Therefore, K-means Clustering is a better method of distinguishing between the two color of wines because of 98% accuracy in the Clustering method, and the PCA had less consistent results.
+
+# Use K-Means Clustering to short the higher quality wines from the lower quality wines.
+Next, we use K-Means Clustering to see if we can separate the higher quality wines from the lower quality wines.  First, we have to recreate the clusters, this time with 10 centers, and an nstart of 50.
+```{r}
+set.seed(78705)
+cluster1 <- kmeans(wine_scaled, centers=10, nstart=50)
+names(cluster1)
+cluster1$centers
+cluster1$cluster
+
+```
+
+# Graph how well the clusters match the quality of wine.
+```{r}
+qplot(quality, fill = factor(cluster1$cluster), data = wine)
+
+```
+
+However, the graph above shows that K-means was unable to successfully separate different quality wines into different clusters, and no cluster seems to have a dominant quality of wine.  
+
+As a result, we can conclude that K-Means clustering does not do a good job in predicting quality.
+This is because each cluster has all kinds of quality, and no cluster seems to represent any quality more than any other.
+
+

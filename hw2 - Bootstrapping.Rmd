@@ -1,0 +1,231 @@
+---
+title: "hw2 - Bootstrapping"
+output: html_document
+---
+
+
+# Import libraries needed
+```{r}
+library(mosaic)
+library(fImport)
+library(foreach)
+```
+
+# Import a few stocks and set the seed
+Here, we import the following stocks: 
+US domestic equities (SPY: the S&P 500 stock index)
+US Treasury bonds (TLT)
+Investment-grade corporate bonds (LQD)
+Emerging-market equities (EEM)
+Real estate (VNQ)
+
+Additionally, we obtain the price history from Yahoo over the past 5 years.
+```{r}
+mystocks = c("SPY", "TLT", "LQD", "EEM", "VNQ")
+myprices = yahooSeries(mystocks, from='2011-01-01', to='2015-07-30')
+set.seed(78705)
+```
+
+
+# A helper function for calculating percent returns from a Yahoo Series
+This function helps us calculate percent returns and will be used extensively later.
+```{r}
+YahooPricesToReturns = function(series) {
+	mycols = grep('Adj.Close', colnames(series))
+	closingprice = series[,mycols]
+	N = nrow(closingprice)
+	percentreturn = as.data.frame(closingprice[2:N,]) / as.data.frame(closingprice[1:(N-1),]) - 1
+	mynames = strsplit(colnames(percentreturn), '.', fixed=TRUE)
+	mynames = lapply(mynames, function(x) return(paste0(x[1], ".PctReturn")))
+	colnames(percentreturn) = mynames
+	as.matrix(na.omit(percentreturn))
+}
+```
+
+# Compute the returns from the closing prices
+```{r}
+myreturns = YahooPricesToReturns(myprices)
+```
+
+# Create a portfolio with an even split in each asset
+This portfolio represents the default portfolio, with 20% invested in each asset.
+```{r}
+default_wealth = 100000
+defaultPortfolio = c(0.2, 0.2, 0.2, 0.2, 0.2)
+```
+
+# Create a portfolio with a safer approach
+This portfolio opts for a safer approach by allocating more funds to the safer assets.
+The portfolio weights US Treasury Bonds at 32%, Investment-grade corporate bonds at 28%, and US domestic equities at 24% because these asset classes are considered safer and less volitile over a given period of time.  Emerging-market equities comprises of only 7% of the portfolio and Real estate comprises of only 9% of the portfolio because these asset classes are considered more risky. 
+```{r}
+safe_wealth = 100000
+safePortfolio = c(0.24, 0.32, 0.28, 0.07, 0.09)
+```
+
+# Create a portfolio with a more aggressive approach
+This portfolio opts for a more aggressive approach, weighing Emerging-market equities and Real estate at 34% and 32% respectively.  US domestic equities, US Treasury bonds and Investment-grade corporate bonds, are weight 14%, 9% and 11% respectively because they are considered safe asset classes.
+```{r}
+aggressive_wealth = 100000
+aggressivePortfolio = c(0.14, 0.09, 0.11, 0.34, 0.32)
+```
+
+# Set up holdings and a tracker for each portfolio
+Next, we create variables to store the price and value of each portfolio over time.
+```{r}
+n_days = 20
+# Set up holdings for default portfolio
+defaultHoldings = defaultPortfolio * default_wealth
+
+# Set up holdings for safe portfolio
+safeHoldings = safePortfolio * safe_wealth
+
+# Set up holdings for aggressive portfolio
+aggressiveHoldings = aggressivePortfolio * aggressive_wealth
+
+
+# Track Value of default portfolio
+defaultValue = rep(0, n_days) 
+
+# Track Value of safe portfolio
+safeValue = rep(0, n_days) 
+
+# Track Value of aggressive portfolio
+aggressiveValue = rep(0, n_days) 
+
+# Track Number of days
+days = rep(0, n_days)
+
+```
+
+# Now simulate 4 trading weeks with each portfolio
+Then, we simulate each portfolio using a 4 week trading period  
+```{r}
+for(today in 1:n_days) {
+	return.today = resample(myreturns, 1, orig.ids=FALSE)
+	defaultHoldings = defaultHoldings + defaultHoldings*return.today
+	safeHoldings = safeHoldings + safeHoldings*return.today
+	aggressiveHoldings = aggressiveHoldings + aggressiveHoldings*return.today
+	
+	default_wealth = sum(defaultHoldings)
+	safe_wealth = sum(safeHoldings)
+	aggressive_wealth = sum(aggressiveHoldings)
+	
+	defaultValue[today] = default_wealth
+	safeValue[today] = safe_wealth
+	aggressiveValue[today] = aggressive_wealth
+	days[today] = today
+	
+}
+default_wealth
+safe_wealth
+aggressive_wealth
+
+```
+
+# Plot the simulation
+Next, we plot the simulated trading weeks so that we can see the results.
+```{r}
+
+df = data.frame(days, defaultValue, safeValue, aggressiveValue)
+
+
+ggplot(df, aes(days)) + geom_line(aes(y = defaultValue, col = "Default")) +
+  geom_line(aes(y = safeValue, col = "Safe")) + geom_line(aes(y = aggressiveValue, col = "Aggressive"))
+
+```
+
+In this graph, we can see the clear seperation between the three portfolios.  The aggressive portfolio will almost always outperform the other two portfolios when Value increases over the trading period, but will underperform the other two portfolios when Value decreases over the trading period.  Similarly, the Safe portfolio will outpreform the other two portfolios when Value decreases over the trading period, and underperform the other two portfolios when Value increases over the trading period.
+
+# Simulate many different possible trading years for the default portfolio
+Next, we run many simulations over the possible trading years using the default portfolio.
+The resulting graph shows how often the portfolio either gained or lost value over the simulations.
+```{r}
+
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	totalwealth = 100000
+	holdings = defaultPortfolio * totalwealth
+	wealthtracker = rep(0, n_days) # Set up a placeholder to track total wealth
+	for(today in 1:n_days) {
+		return.today = resample(myreturns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		totalwealth = sum(holdings)
+		wealthtracker[today] = totalwealth
+	}
+	wealthtracker
+}
+
+# Profit/loss
+hist(main = "Histogram of Default Portfolio", xlab = "Value", sim1[,n_days] - 100000)
+
+# Calculate 5% value at risk
+quantile(sim1[,n_days], 0.05) - 100000
+
+
+```
+
+The graph shows that the default portfolio is more likely to gain a small amount of money over the 4 week trading period.  Additionally, the portfolio had a 5% Value at Risk of -3805, meaning that there is a 5% chance that the portfolio could gain more than $3,804 over the 4 week trading period.
+
+
+# Simulate many different possible trading years for the safe portfolio
+Next, we run many simulations over the possible trading years using the safe portfolio.
+The resulting graph shows how often the portfolio either gained or lost value over the simulations.
+```{r}
+
+sim2 = foreach(i=1:5000, .combine='rbind') %do% {
+	totalwealth = 100000
+	holdings = safePortfolio * totalwealth
+	wealthtracker = rep(0, n_days) # Set up a placeholder to track total wealth
+	for(today in 1:n_days) {
+		return.today = resample(myreturns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		totalwealth = sum(holdings)
+		wealthtracker[today] = totalwealth
+	}
+	wealthtracker
+}
+
+# Profit/loss
+hist(main = "Histogram of Safe Portfolio", xlab = "Value", sim2[,n_days] - 100000)
+
+# Calculate 5% value at risk
+quantile(sim2[,n_days], 0.05) - 100000
+
+
+```
+
+The graph shows that the safe portfolio had a high tendency to end with a gain in value over a 4 week trading period, but also is less likely to gain a large amount of value over the 4 week trading period.  
+
+Since the safe portfolio had a 5% Value of Risk of -2401, it has a 5% chance of gaining more than $2,401 over a 4 week trading period, which is significantly less than the default portfolio.  Therefore, while this portfolio is more likely to end with an increase in value, it will also grow less than the other portfolios.  
+
+# Simulate many different possible trading years for the aggressive portfolio
+Next, we run many simulations over the possible trading years using the aggressive portfolio.
+The resulting graph shows how often the portfolio either gained or lost value over the simulations.
+```{r}
+
+sim3 = foreach(i=1:5000, .combine='rbind') %do% {
+	totalwealth = 100000
+	holdings = aggressivePortfolio * totalwealth
+	wealthtracker = rep(0, n_days) # Set up a placeholder to track total wealth
+	for(today in 1:n_days) {
+		return.today = resample(myreturns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		totalwealth = sum(holdings)
+		wealthtracker[today] = totalwealth
+	}
+	wealthtracker
+}
+
+# Profit/loss
+hist(main = "Histogram of Aggressive Portfolio", xlab = "Value", sim3[,n_days] - 100000)
+
+# Calculate 5% value at risk
+quantile(sim3[,n_days], 0.05) - 100000
+
+
+```
+The graph shows that the aggressive portfolio was relatively equally likely to end up with a net gain as it was to end up with a net loss.  However, when the portfolio ended with a gain in value, it tended to gain much more than it would lose if it lost in value.  
+
+With a 5% Value at Risk of $5,540, it seems like the aggressive portfolio is the most apporpriate decision for long term investments.  However, it also has a much larger tendency to end with a loss in value than the other portfolios, making it a much risker option in the short run.
+
+
+

@@ -1,0 +1,84 @@
+---
+title: "UnderCount"
+output: html_document
+---
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+# Read in the csv and set the seed.
+Initially, we need to read in the csv from GitHub, attach the vote data, and set the seed to see the same results each time.
+```{r}
+library(ggplot2)
+voteData = read.csv('https://raw.githubusercontent.com/jgscott/STA380/master/data/georgia2000.csv')
+head(voteData)
+attach(voteData)
+set.seed(78705)
+```
+
+# Create a new column that represents the UnderCount
+Right now, we just have the amount of ballots cast and the amount of votes recorded.  We want to create a new variable called UnderCount, which will represent the difference between those two variables.
+```{r}
+voteData$UnderCount <-  voteData$ballots - voteData$votes
+
+```
+
+# Factorize the data
+Since the variables "poor", "atlanta", and "urban" are represented as numeric values, we want to factorize these such that these variables are no longer numeric.  This will allow us to create better looking graphs using those variables.
+```{r}
+voteData$poor = as.factor(voteData$poor)
+voteData$atlanta = as.factor(voteData$atlanta)
+voteData$urban = as.factor(voteData$urban)
+```
+
+
+# Create a new column that represents the percentage of the UnderCount
+While the amount of votes that each county UnderCount is useful, we want to convert this number into a percentage of the total ballots cast, so that larger counties can be compared to smaller counties more accurately.
+```{r}
+voteData$UnderCountPercent <- voteData$UnderCount / voteData$ballots
+```
+
+# Show the summary of the voteData
+Next, we show the initial summary of the voteData, which tells us some interesting information about each variable in the data set.  However, it is hard to visualize all of this, and these numbers do not mean much without comparing variables with each other.
+```{r}
+summary(voteData)
+```
+
+# Create a Box Plot using UnderCountPercent and equipment type
+First, we create a box plot using UnderCountPercent as the Y variable and equipment type as the X variable.  This shows us that equipment type alone does not seem to be a major factor in determining UnderCountPercent, as each equipment type seems to have about the same UnderCountPercent, though some have a higher variance than others.
+```{r}
+ggplot(voteData, aes(equip, UnderCountPercent)) + geom_boxplot() 
+```
+
+# Create a Box Plot using UnderCountPercent, equipment type, and seperate based on if the county is poor or not.
+Next, we create a box plot using UnderCountPercent as the Y variable, and Equipment type as the X variable.  We also seperate the data points based on whether or not the county is poor or not, with red representing that the county is not poor, and blue represeting that the county is poor.  
+```{r}
+ggplot(voteData, aes(equip, UnderCountPercent, col = poor)) + geom_boxplot() 
+```
+
+This box plot shows much more interesting results, as it shows that poorer counties are much more likely to have a higher Under Count Percentage than counties that are not poor are.  It also shows that only poor counties seem to use Paper equipment, though interestingly enough, Paper seems to have a lower UnderCountPercent than the other types of equipment among poor counties.
+
+
+# Create a Box Plot using UnderCountPercent, equipment type, and seperate based on if the environment is urban or not.
+Next, we create a Box Plot using UnderCountPercent as the Y variable and Equipment type as the X variable, with red representing a non-urban county, and blue representing an urban county.
+```{r}
+ggplot(voteData, aes(equip, UnderCountPercent, col = urban)) + geom_boxplot() 
+```
+
+Once again, we can see a clear pattern in the UnderCountPercent.  Counties that are not Urban seem to have a much higher UnderCountPercent than counties that are urban.  This likely means that there are some differences between an urban and non urban enviornment that rather drastically change the chance that a vote will be Under Counted.
+
+# Create a Box Plot using UnderCountPercent, and atlanta
+Next, we create another box plot with UnderCountPercent as the Y variable and whether a county is in atlanta or not as the X variable.
+```{r}
+ggplot(voteData, aes(atlanta, UnderCountPercent)) + geom_boxplot() 
+```
+
+Again, we see a distinguishable trend in the box plot.  It appears that counties within Atlanta are less likely to Under Count votes than cities not in Atlanta.  This shows that the city of Atlanta has some factors that contribute to a lower Under Count Percentage than other counties in the United States.
+
+
+# Create a Scatter Plot using UnderCountPercent and perAA
+Finally, we create a Scatter Plot using UnderCountPercent as the Y variable and percentage of African Americans as the X variable.  
+```{r}
+ggplot(voteData, aes(perAA, UnderCountPercent)) + geom_point()
+```
+
+Unlike the other graphs, there is not distinctive pattern in the graph between UnderCountPercent and percentage of African Americans.  This suggests that the amount of African Amercians in a county has little to no significance in determining how many votes are Under Counted in a county.

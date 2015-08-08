@@ -1,0 +1,73 @@
+---
+title: "hw4 - segmentation"
+output: html_document
+---
+
+# Read in the csv file and set the seed
+Start by reading the CSV file, attaching the wine, and setting the seed.
+```{r}
+library(ggplot2)
+twitterdata = read.csv('https://raw.githubusercontent.com/jgscott/STA380/master/data/social_marketing.csv',header=TRUE)
+head(twitterdata)
+attach(twitterdata)
+summary(twitterdata)
+set.seed(78705)
+```
+
+# Scale the data and remove the user ID column
+The user ID column is removed from the data because it is essentially noise, as a User's ID is very unlikely to be related to the user's choice in tweets.
+The data is also scaled to allow kmeans to obtain more accurate results.
+```{r}
+twitterdata1 <- twitterdata[,c(2:37)]
+twitter_scaled <- scale(twitterdata1, center = TRUE, scale = TRUE)
+
+```
+
+# Create Clusters
+K-means is then run with 10 centers and an nstart of 50.  10 centers was chosen as it provided an adequate number of clusters for users to be grouped in without providing too many clusters that users would be grouped into very narrow categories, making it hard for marketers to target a specific group of people. 
+```{r}
+cluster_all <- kmeans(twitter_scaled, centers=10, nstart=50)
+names(cluster_all)
+cluster_all$centers
+cluster_all$cluster
+```
+
+# Find the Size of each Cluster
+```{r}
+length(which(cluster_all$cluster == 1))
+length(which(cluster_all$cluster == 2))
+length(which(cluster_all$cluster == 3))
+length(which(cluster_all$cluster == 4))
+length(which(cluster_all$cluster == 5))
+length(which(cluster_all$cluster == 6))
+length(which(cluster_all$cluster == 7))
+length(which(cluster_all$cluster == 8))
+length(which(cluster_all$cluster == 9))
+length(which(cluster_all$cluster == 10))
+
+
+```
+
+With the data above, we can determine the size of each group, and what each group is most likely to tweet about by finding the largest 3 numbers within clusterall$centers
+
+Cluster 1 has 350 people in it, and are most likely to tweet about College/University, Online Gaming, and Sports.  This cluster of people seems to contain College Students tweeting about their hobbies and course work.
+
+Cluster 2 has 3311 people in it, and do not seem to have any set pattern of tweets.  This seems to be the uncategorized group of people who do not really have any pattern to their tweets, and thus, cannot be easily grouped into a cluster.
+
+Cluster 3 has 1065 people in it, and are most lilely to tweet about Chatter, Shopping, and Photo Sharing.  
+
+Cluster 4 has 429 people in it, and are most likely to tweet about Politics, News, and Automobiles.
+
+Cluster 5 has 49 people in it, and are most likely to tweet about Spam and Adult material.  This cluster most likely is comprised of spam bots that tweet only Spam and Adult material.
+
+Cluster 6 has 412 people in it, and are most likely to tweet about TV/Film, Music, and Art.  
+
+Cluster 7 has 674 people in it, and are most likely to tweet about Food, Family, Religion and School.  The people in this group seem likely to be religious parents tweeting about their kids and their lives.
+
+Cluster 8 has 768 people in it, and are most likely to tweet about Health/Nutrition, Outdoors, and Personal Fitness.  This cluster of people seem like people who enjoy living a healthy lifestyle, and likely are great candidates for advertising of such products.
+
+Cluster 9 has 349 people in it, and are most likely to tweet about Travel, News and Computers.  This cluster of people seem most like business people.
+
+Cluster 10 has 475 people in it, and are most likely to tweet about Photo Sharing, Cooking, and Beauty.
+
+Of the clusters analyzed, the people within Cluster 8 are the best candidates to target advertisement of NutrientH20 due to their high concentration of Health/Nutrition and Personal Fitness tweets.  Of all of the users in Twitter, the people in this cluster are the most likely to react positively towards the company's product.  
